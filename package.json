@@ -1,0 +1,27 @@
+{
+  "name": "smart-checkpoints-driver-mapbox",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Smart Checkpoints map driver: renders a project on a Mapbox basemap and serves it to the operator console.",
+  "license": "MIT",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "mapbox-gl": "^3.29.0",
+    "ws": "^8.18.0"
+  },
+  "homepage": "https://smartcheckpoints.xyz",
+  "keywords": [
+    "smart checkpoints",
+    "map driver",
+    "average speed enforcement",
+    "section control",
+    "mapbox"
+  ]
+}

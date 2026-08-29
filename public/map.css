@@ -1,0 +1,180 @@
+/*
+ * The map view's own look.
+ *
+ * It borrows the console's palette so the two views of the same graph do not
+ * look like two different products, but nothing here is shared code: this page
+ * is served by a different process on a different origin, and the whole point
+ * of the split is that the console does not know what is drawing the map.
+ */
+:root {
+  --cyan: #19c4d8;
+  --cyan-dark: #0e7f8c;
+  --bg: #eceff0;
+  --surface: #ffffff;
+  --border: #dde3e5;
+  --text: #1e2628;
+  --text-dim: #6b7679;
+  --yellow: #f7c948;
+  --red: #e74c5e;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/*
+ * The `hidden` attribute has to actually hide things.
+ *
+ * `[hidden] { display: none }` comes from the browser's own stylesheet, and
+ * every rule below that sets `display` on an id selector outranks it. Without
+ * this line `notice.hidden = true` is a no-op, and the opening notice sits on
+ * top of a map that loaded perfectly well - which looks exactly like a map
+ * that never loaded at all.
+ */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+#status,
+#legend,
+#hint,
+#toast {
+  position: absolute;
+  z-index: 2;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgb(30 38 40 / 8%);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  padding: 0.4rem 0.9rem;
+  margin: 0;
+}
+
+/* Clear of the Mapbox wordmark in the corner, which has to stay visible:
+   it is a condition of the token this page is drawing with. */
+#legend {
+  left: 1rem;
+  bottom: 2.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  align-items: center;
+  max-width: calc(100% - 2rem);
+}
+
+#status {
+  left: 1rem;
+  bottom: 5.5rem;
+  max-width: calc(100% - 2rem);
+}
+
+#status-problem {
+  color: var(--red);
+}
+
+#status-problem::before {
+  content: " \00b7 ";
+  color: var(--text-dim);
+}
+
+#legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.swatch.ok {
+  background: var(--cyan-dark);
+}
+.swatch.unknown {
+  background: var(--yellow);
+}
+.swatch.no-route {
+  background: var(--red);
+}
+.swatch.flagged {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--yellow);
+  background: transparent;
+}
+
+#hint {
+  right: 1rem;
+  bottom: 2.75rem;
+}
+
+#toast {
+  left: 50%;
+  top: 1rem;
+  transform: translateX(-50%);
+  color: var(--text);
+}
+
+/* The state before anything has been received, and the state where this page
+   is open on its own rather than inside a console that approved it. */
+#notice {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  background: var(--bg);
+}
+
+#notice h1 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+#notice p {
+  margin: 0;
+  max-width: 32rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.mapboxgl-popup-content {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.8rem;
+}
+
+.mapboxgl-popup-content strong {
+  font-family: var(--sans);
+  display: block;
+  margin-bottom: 0.2rem;
+}

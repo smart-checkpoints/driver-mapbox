@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Smart Checkpoints map view</title>
+    <link href="vendor/mapbox-gl.css" rel="stylesheet" />
+    <link href="map.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <!-- What the console has actually sent.
+
+         Three different failures - nothing arrived, an empty project arrived,
+         the basemap threw - all look like the same empty map, and an operator
+         cannot tell them apart by looking. This line says which one it is. -->
+    <p id="status" hidden>
+      <span id="status-counts"></span><span id="status-problem" hidden></span>
+    </p>
+
+    <div id="legend" hidden>
+      <span><i class="swatch ok"></i>enforcing</span>
+      <span><i class="swatch unknown"></i>no distance</span>
+      <span><i class="swatch no-route"></i>no road</span>
+      <span><i class="swatch flagged"></i>flagged position</span>
+    </div>
+
+    <p id="hint" hidden>Drag a checkpoint to correct its position</p>
+    <p id="toast" hidden></p>
+
+    <div id="notice">
+      <h1>Smart Checkpoints map view</h1>
+      <p id="notice-body">Waiting for the console.</p>
+    </div>
+
+    <!-- Served by this driver, not from a CDN. A page that is going to be
+         embedded in somebody else's console cannot depend on a third-party
+         origin being fetchable from inside an iframe: privacy extensions and
+         frame-level blocking stop exactly that, and a private camera network
+         may have no route out at all. -->
+    <script src="vendor/mapbox-gl.js"></script>
+    <script src="env.js"></script>
+    <script src="map.js"></script>
+  </body>
+</html>
