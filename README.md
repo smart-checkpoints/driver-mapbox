@@ -114,6 +114,7 @@ checkpoints at an origin nobody approved.
 | `sc:ready` | `{ protocolVersion, capabilities }` |
 | `sc:select` | `{ kind, id }` |
 | `sc:node-moved` | `{ nodeId, latitude, longitude }` — only because this driver declared `capabilities.nodeDrag` |
+| `sc:place` | `{ latitude, longitude }` — a right-click on the map; only because this driver declared `capabilities.placeNode` |
 
 Everything arriving from the console is validated here before it is believed,
 and everything arriving from here is validated by the console. Neither side

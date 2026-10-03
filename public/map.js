@@ -3,8 +3,9 @@
  *
  * This page is not part of the console. It is served by the map driver, on the
  * driver's own origin, and it holds no API key and opens no socket: the
- * console forwards project state in with postMessage and this draws it. Three
- * messages go the other way - a handshake, a selection, and a proposed move.
+ * console forwards project state in with postMessage and this draws it. Four
+ * messages go the other way - a handshake, a selection, a proposed move, and
+ * a spot picked for a new checkpoint.
  *
  * Everything from the parent is checked before it is believed: the origin
  * first, then the shape. The parent does the same in the other direction. The
@@ -14,7 +15,7 @@
   "use strict";
 
   var BRIDGE_VERSION = 2;
-  var CAPABILITIES = { nodeDrag: true };
+  var CAPABILITIES = { nodeDrag: true, placeNode: true };
 
   var STATUS_COLOUR = {
     ok: "#0e7f8c",
@@ -588,6 +589,36 @@
       longitude: at[0],
     });
     flash("Move proposed - confirm it in the console");
+  });
+
+  /* ------------------------------------------------------------- placing */
+
+  /*
+   * A right-click picks a spot for a new checkpoint. Like a drag it is only a
+   * proposal: the console opens its add dialog with the coordinate filled in,
+   * and nothing exists until the operator confirms there.
+   *
+   * Right-drag rotates the map, and the browser still fires a context menu
+   * when the button comes up, so a press that travelled is a rotation, not a
+   * pick.
+   */
+  var rightDownAt = null;
+
+  map.on("mousedown", function (event) {
+    if (event.originalEvent.button === 2) rightDownAt = event.point;
+  });
+
+  map.on("contextmenu", function (event) {
+    event.originalEvent.preventDefault();
+    var from = rightDownAt;
+    rightDownAt = null;
+    if (from && Math.hypot(event.point.x - from.x, event.point.y - from.y) > 4) {
+      return;
+    }
+    post("sc:place", {
+      latitude: event.lngLat.lat,
+      longitude: event.lngLat.wrap().lng,
+    });
   });
 
   /* ---------------------------------------------------------------------
