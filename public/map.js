@@ -140,6 +140,8 @@
   var selection = { kind: null, id: null };
   var framed = false;
   var received = false;
+  /* A demo project's test drive: checkpoints are picked, not dragged. */
+  var testDrive = { on: false, start: null, end: null };
 
   function nodeFeature(node, position) {
     return {
@@ -156,6 +158,12 @@
         reason: (node.flags || []).join(", "),
         selected:
           selection.kind === "node" && selection.id === node.node_id ? 1 : 0,
+        pick:
+          testDrive.on && testDrive.start === node.node_id
+            ? "START"
+            : testDrive.on && testDrive.end === node.node_id
+              ? "END"
+              : "",
       },
     };
   }
@@ -444,6 +452,39 @@
       paint: { "text-color": "#1e2628" },
     });
 
+    /* The checkpoints picked for a test drive, ringed and named. */
+    map.addLayer({
+      id: "nodes-picked",
+      type: "circle",
+      source: "nodes",
+      filter: ["!=", ["get", "pick"], ""],
+      paint: {
+        "circle-radius": 17,
+        "circle-color": "rgba(25,196,216,0.18)",
+        "circle-stroke-color": "#19c4d8",
+        "circle-stroke-width": 3,
+      },
+    });
+    map.addLayer({
+      id: "nodes-picked-label",
+      type: "symbol",
+      source: "nodes",
+      filter: ["!=", ["get", "pick"], ""],
+      layout: {
+        "text-field": ["get", "pick"],
+        "text-size": 11,
+        "text-offset": [0, 2.3],
+        "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
+      },
+      paint: {
+        "text-color": "#0e7c8a",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 2,
+      },
+    });
+
     /* A demo project's test car, above everything it drives past. */
     map.addLayer({
       id: "vehicle-halo",
@@ -552,7 +593,7 @@
   map.on("mousemove", "nodes", function (event) {
     if (dragging) return;
     var props = event.features[0].properties;
-    map.getCanvas().style.cursor = "grab";
+    map.getCanvas().style.cursor = testDrive.on ? "pointer" : "grab";
     popup
       .setLngLat(event.features[0].geometry.coordinates)
       .setHTML(
@@ -562,7 +603,9 @@
           (props.flagged === 1
             ? props.reason + "<br>"
             : "") +
-          "drag to correct its position",
+          (testDrive.on
+            ? "click to pick it for the test drive"
+            : "drag to correct its position"),
       )
       .addTo(map);
   });
@@ -601,11 +644,18 @@
    * checkpoint goes back where it was and stays there until the console says
    * otherwise, because until then it has not moved.
    */
+  /** Pixels a press may wander and still be a click rather than a drag. */
+  var CLICK_SLOP = 5;
+
   map.on("mousedown", "nodes", function (event) {
+    // A test drive picks checkpoints; it never moves them.
+    if (testDrive.on) return;
     event.preventDefault(); // stops the map panning under the drag
     dragging = {
       nodeId: event.features[0].properties.node_id,
       at: [event.lngLat.lng, event.lngLat.lat],
+      from: event.point,
+      moved: false,
     };
     map.getCanvas().style.cursor = "grabbing";
     popup.remove();
@@ -613,6 +663,14 @@
 
   map.on("mousemove", function (event) {
     if (!dragging) return;
+    if (
+      !dragging.moved &&
+      Math.hypot(event.point.x - dragging.from.x, event.point.y - dragging.from.y) <=
+        CLICK_SLOP
+    ) {
+      return;
+    }
+    dragging.moved = true;
     dragging.at = [event.lngLat.lng, event.lngLat.lat];
     render();
   });
@@ -620,10 +678,15 @@
   map.on("mouseup", function (event) {
     if (!dragging) return;
     var nodeId = dragging.nodeId;
+    var moved = dragging.moved;
     var at = [event.lngLat.lng, event.lngLat.lat];
     dragging = null;
     map.getCanvas().style.cursor = "";
     render();
+
+    // Pressed and released in place: that was a click, and the click handler
+    // has already said so. Nothing was moved, so nothing is proposed.
+    if (!moved) return;
 
     post("sc:node-moved", {
       nodeId: nodeId,
@@ -794,6 +857,21 @@
             : { kind: null, id: null };
         render();
         break;
+
+      case "sc:mode": {
+        if (!payload) return;
+        var id = function (value) {
+          return Number.isInteger(value) ? value : null;
+        };
+        testDrive = {
+          on: payload.testDrive === true,
+          start: id(payload.start),
+          end: id(payload.end),
+        };
+        if (testDrive.on && dragging) dragging = null;
+        render();
+        break;
+      }
 
       case "sc:vehicle": {
         if (!payload || !drawable) return;
