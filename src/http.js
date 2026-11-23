@@ -60,16 +60,24 @@ function envScript(config) {
  * imports a mapping library and never learns whether this is Mapbox or
  * anything else.
  */
-function createHttpServer(config) {
+function createHttpServer(configOrGetter, { handle } = {}) {
+  // A getter, so a token or style changed from the dashboard reaches the next
+  // page load without restarting this server.
+  const current =
+    typeof configOrGetter === "function" ? configOrGetter : () => configOrGetter;
+  const config = current();
+
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+    if (handle && handle(req, res, url)) return;
 
     if (url.pathname === "/env.js") {
       res.writeHead(200, {
         "content-type": TYPES[".js"],
         "cache-control": "no-store",
       });
-      res.end(envScript(config));
+      res.end(envScript(current()));
       return;
     }
 
@@ -127,8 +135,10 @@ function createHttpServer(config) {
 
   return {
     start() {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
+        server.once("error", reject);
         server.listen(config.port, config.host, () => {
+          server.off("error", reject);
           log.info(`serving the map page on http://${config.host}:${config.port}/`);
           resolve();
         });

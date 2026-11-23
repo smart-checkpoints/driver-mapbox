@@ -34,17 +34,19 @@ console build. Hosting its own page from its own process is the point.
 
 ```bash
 npm install
-cp .env.example .env      # then fill in SC_API_KEY and MAPBOX_TOKEN
-npm start
+npm start                 # opens the dashboard: pick a project, paste a token
 ```
+
+`.env` is optional now. The dashboard asks for what it needs; `.env` still
+works, and its values are the defaults the dashboard starts from.
 
 | Variable | Meaning |
 | --- | --- |
 | `SC_WS_URL` | The driver channel. Default `ws://localhost:3000/distance-driver` |
-| `SC_API_KEY` | The project's **operator** key. Required |
+| `SC_API_KEY` | The project's **operator** key. Picked in the dashboard; required with `SC_DASHBOARD=off` |
 | `SC_MAP_HOST` / `SC_MAP_PORT` | Where the page is served. Default `127.0.0.1:4100` |
 | `SC_MAP_PUBLIC_URL` | The address announced to the server, when it differs from the bind address |
-| `MAPBOX_TOKEN` | Mapbox access token. Required, and never committed |
+| `MAPBOX_TOKEN` | Mapbox access token. Pasted in the dashboard or set here; never committed |
 | `MAPBOX_STYLE` | Any Mapbox style URL. Default `light-v11`, which is what the console is |
 
 The token is a browser credential — it has to reach the browser to be of any
@@ -63,6 +65,34 @@ puts the library in place; the page says so plainly if it is missing.
 Internet access is still required for tiles: they come from Mapbox. A project on a
 private camera network with no route out needs a different map driver, and
 that is exactly why the map is a driver rather than part of the console.
+
+### Dashboard
+
+`npm start` also opens a dashboard at `http://127.0.0.1:4100/dashboard/`, on the
+same port as the map page. It asks which project to serve and switches between
+projects without a restart:
+
+- **Saved**: projects this driver has served. Click **Use** to switch.
+- **From the server**: every project on the server, after you enter the server's
+  `ADMIN_PASSWORD` once. The keys stay in the driver and never reach the page.
+- **Paste a key**: checked with the server before it is used.
+
+Settings changed there (server address, Mapbox token, style) override `.env`.
+A token changed there reaches the map page on its next load. The token is never
+sent back to the dashboard in full. Everything it saves goes in `projects.json`,
+which git ignores. A key already in `.env` is checked and saved there on the
+first start.
+
+The dashboard answers this computer only. If `SC_MAP_HOST` is a specific
+network address rather than loopback or `0.0.0.0`, it gets its own port on
+`127.0.0.1` instead (`SC_DASHBOARD_PORT`, default `4201`).
+
+| Variable | Meaning |
+| --- | --- |
+| `SC_DASHBOARD` | `off` runs without it, the old way: key and token from `.env`, exit non-zero when another driver takes the slot |
+| `SC_DASHBOARD_OPEN` | `off` prints the link instead of opening the browser |
+| `SC_DASHBOARD_PORT` | Dashboard port, used only when the map page is not on loopback. Default `4201` |
+| `SC_DASHBOARD_FILE` | Where saved projects and settings go. Default `./projects.json` |
 
 ## Announce, then approve
 

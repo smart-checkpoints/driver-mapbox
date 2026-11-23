@@ -59,7 +59,7 @@ function publicUrl(source, host, port) {
   return `http://${reachable}:${port}/`;
 }
 
-function loadConfig(source = process.env) {
+function loadConfig(source = process.env, { dashboard = false } = {}) {
   const wsUrl = source.SC_WS_URL || DEFAULT_WS_URL;
 
   const parsed = new URL(wsUrl);
@@ -74,7 +74,9 @@ function loadConfig(source = process.env) {
     driverName: pkg.name,
     driverVersion: pkg.version,
     wsUrl,
-    apiKey: requiredEnv(source, "SC_API_KEY"),
+    // With the dashboard on, the key comes from the project picked there and
+    // the token can be pasted there too, so neither is a reason to exit.
+    apiKey: dashboard ? source.SC_API_KEY || null : requiredEnv(source, "SC_API_KEY"),
     host,
     port,
     uiUrl: publicUrl(source, host, port),
@@ -82,7 +84,7 @@ function loadConfig(source = process.env) {
     // through /env.js, because a Mapbox token is a browser credential; it is
     // scoped and rotatable at Mapbox, and this process hands it only to
     // whoever can already reach this port.
-    mapboxToken: requiredEnv(source, "MAPBOX_TOKEN"),
+    mapboxToken: dashboard ? source.MAPBOX_TOKEN || "" : requiredEnv(source, "MAPBOX_TOKEN"),
     mapboxStyle: source.MAPBOX_STYLE || DEFAULT_STYLE,
   };
 }
