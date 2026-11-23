@@ -1,5 +1,6 @@
 "use strict";
 
+const { EventEmitter } = require("events");
 const WebSocket = require("ws");
 
 const log = require("./logger");
@@ -50,7 +51,7 @@ function describeError(err) {
  * embeds it inside its own chrome and would otherwise be doing so on the
  * say-so of whoever holds an API key.
  */
-class Driver {
+class Driver extends EventEmitter {
   #config;
   #socket = null;
   #authenticated = false;
@@ -58,10 +59,18 @@ class Driver {
   #reconnectTimer = null;
   #stopped = false;
   #onFatal;
+  #stopOnReject;
 
-  constructor(config, { onFatal } = {}) {
+  /**
+   * Emits `status` ({ state, ... }) as the connection changes. With
+   * `stopOnReject` - the dashboard sets it - a rejected key stops the driver
+   * instead of retrying it forever.
+   */
+  constructor(config, { onFatal, stopOnReject = false } = {}) {
+    super();
     this.#config = config;
     this.#onFatal = onFatal || (() => {});
+    this.#stopOnReject = stopOnReject;
   }
 
   get connected() {
@@ -88,6 +97,7 @@ class Driver {
 
   #connect() {
     log.info(`connecting to ${this.#config.wsUrl}`);
+    this.emit("status", { state: "connecting" });
 
     const socket = new WebSocket(this.#config.wsUrl);
     this.#socket = socket;
@@ -95,6 +105,7 @@ class Driver {
 
     socket.on("open", () => {
       log.info("connected, authenticating");
+      this.emit("status", { state: "authenticating" });
       this.#send(
         {
           type: "auth",
@@ -132,10 +143,12 @@ class Driver {
             : "the server does not recognise this driver's role";
         log.error(`${reasonText}${detail}; not reconnecting`);
         this.stop();
+        this.emit("status", { state: "fatal", reason: reasonText });
         this.#onFatal(reasonText);
         return;
       }
 
+      if (this.#stopped) return;
       this.#scheduleReconnect(`connection closed with code ${code}${detail}`);
     });
   }
@@ -155,6 +168,12 @@ class Driver {
     log.warn(
       `${reason}; reconnecting in ${delay}ms (attempt ${this.#reconnectAttempt})`,
     );
+    this.emit("status", {
+      state: "reconnecting",
+      reason,
+      delayMs: delay,
+      attempt: this.#reconnectAttempt,
+    });
     this.#reconnectTimer = setTimeout(() => {
       this.#reconnectTimer = null;
       this.#connect();
@@ -190,6 +209,11 @@ class Driver {
           "the map view stays unavailable until an operator approves that " +
             "address in the console, under Project",
         );
+        this.emit("status", {
+          state: "connected",
+          projectId: message.projectId,
+          protocolVersion: Number(message.protocolVersion) || 1,
+        });
         break;
 
       case "calculate-distance":
@@ -204,6 +228,11 @@ class Driver {
       case "error":
         if (!this.#authenticated) {
           log.error(`authentication rejected by server: ${message.message}`);
+          if (this.#stopOnReject) {
+            this.stop();
+            this.emit("status", { state: "rejected", message: message.message });
+            return;
+          }
           socket.close();
         } else {
           log.warn(`server reported an error: ${message.message}`);
