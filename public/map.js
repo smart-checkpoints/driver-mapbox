@@ -363,6 +363,7 @@
 
     map.addSource("edges", { type: "geojson", data: collection([]) });
     map.addSource("nodes", { type: "geojson", data: collection([]) });
+    map.addSource("vehicle", { type: "geojson", data: collection([]) });
 
     map.addLayer({
       id: "edges-selected",
@@ -441,6 +442,47 @@
         "text-allow-overlap": true,
       },
       paint: { "text-color": "#1e2628" },
+    });
+
+    /* A demo project's test car, above everything it drives past. */
+    map.addLayer({
+      id: "vehicle-halo",
+      type: "circle",
+      source: "vehicle",
+      paint: {
+        "circle-radius": 16,
+        "circle-color": ["case", ["==", ["get", "violation"], 1], "#e5484d", "#19c4d8"],
+        "circle-opacity": 0.25,
+      },
+    });
+    map.addLayer({
+      id: "vehicle",
+      type: "circle",
+      source: "vehicle",
+      paint: {
+        "circle-radius": 8,
+        "circle-color": ["case", ["==", ["get", "violation"], 1], "#e5484d", "#1e2628"],
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": 3,
+      },
+    });
+    map.addLayer({
+      id: "vehicle-label",
+      type: "symbol",
+      source: "vehicle",
+      layout: {
+        "text-field": ["get", "label"],
+        "text-size": 12,
+        "text-offset": [0, -1.9],
+        "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
+      },
+      paint: {
+        "text-color": ["case", ["==", ["get", "violation"], 1], "#e5484d", "#1e2628"],
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 2,
+      },
     });
 
     // The sources exist from here on, so anything that arrived early and
@@ -752,6 +794,36 @@
             : { kind: null, id: null };
         render();
         break;
+
+      case "sc:vehicle": {
+        if (!payload || !drawable) return;
+        var source = map.getSource("vehicle");
+        if (!source) return;
+        var at = payload.position;
+        if (
+          !isObject(at) ||
+          !Number.isFinite(at.lat) ||
+          !Number.isFinite(at.lng) ||
+          Math.abs(at.lat) > 90 ||
+          Math.abs(at.lng) > 180
+        ) {
+          source.setData(collection([]));
+          return;
+        }
+        source.setData(
+          collection([
+            {
+              type: "Feature",
+              geometry: { type: "Point", coordinates: [at.lng, at.lat] },
+              properties: {
+                label: typeof payload.label === "string" ? payload.label.slice(0, 60) : "",
+                violation: payload.violation === true ? 1 : 0,
+              },
+            },
+          ]),
+        );
+        break;
+      }
 
       default:
         break;
